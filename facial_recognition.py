@@ -3,41 +3,33 @@ import cv2
 import os
 import numpy as np
 from PIL import Image
-import mediapipe as mp
-
-# Initialize Mediapipe Face Detection
-mp_face_detection = mp.solutions.face_detection
-face_detection = mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.5)
 
 # Create the storage directory if it doesn't exist
 SAVE_DIR = "registered_faces"
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
-st.title("🆔 User Face Registration (Ultra-Light Edition)")
+st.title("🆔 User Face Registration (Clean Server Edition)")
 st.write("Enter your username and take a picture to register.")
 
 username = st.text_input("Enter Username:", placeholder="e.g., john_doe").strip()
 img_file_buffer = st.camera_input("Take a snapshot for registration")
 
 if img_file_buffer is not None and username != "":
-    # Convert webcam buffer to PIL Image, then to OpenCV format (BGR)
+    # Convert webcam buffer directly to an image layout
     img = Image.open(img_file_buffer)
     image_np = np.array(img)
+    
+    # Convert RGB (Streamlit default) to BGR (OpenCV default for saving files)
     image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
-    image_rgb = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR) # Mediapipe needs RGB
     
-    st.info("Scanning for face...")
+    st.info("Validating snapshot data...")
     
-    # Process the image with Mediapipe
-    results = face_detection.process(image_rgb)
-    
-    if not results.detections:
-        st.error("❌ No face detected! Please look clearly at the camera.")
-    elif len(results.detections) > 1:
-        st.warning("⚠️ Multiple faces detected. Please make sure only one person is in frame.")
+    # Safety Check: Ensure the picture isn't a blank or empty frame
+    if image_np.size == 0 or np.mean(image_np) < 5:
+        st.error("❌ Invalid image data. Please ensure your camera is uncovered and try again.")
     else:
-        # Success! Save the photo under the username
+        # Success! Save the photo safely under the username
         file_path = os.path.join(SAVE_DIR, f"{username}.jpg")
         cv2.imwrite(file_path, image_bgr)
         
