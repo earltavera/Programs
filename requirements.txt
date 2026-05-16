@@ -1,4 +1,5 @@
 streamlit
+numpy<2.0
+dlib-bin
 face_recognition
 Pillow
-numpy<2.0
