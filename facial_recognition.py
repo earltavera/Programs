@@ -3,14 +3,18 @@ import cv2
 import os
 import numpy as np
 from PIL import Image
-from deepface import DeepFace
+import mediapipe as mp
+
+# Initialize Mediapipe Face Detection
+mp_face_detection = mp.solutions.face_detection
+face_detection = mp_face_detection.FaceDetection(model_selection=0, min_detection_confidence=0.5)
 
 # Create the storage directory if it doesn't exist
 SAVE_DIR = "registered_faces"
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
-st.title("🆔 User Face Registration (Fast Cloud Edition)")
+st.title("🆔 User Face Registration (Ultra-Light Edition)")
 st.write("Enter your username and take a picture to register.")
 
 username = st.text_input("Enter Username:", placeholder="e.g., john_doe").strip()
@@ -21,29 +25,24 @@ if img_file_buffer is not None and username != "":
     img = Image.open(img_file_buffer)
     image_np = np.array(img)
     image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
+    image_rgb = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR) # Mediapipe needs RGB
     
-    st.info("Analyzing image for faces...")
+    st.info("Scanning for face...")
     
-    try:
-        # DeepFace checks if a face exists in the image
-        # detector_backend='opencv' is incredibly fast and lightweight
-        face_objs = DeepFace.extract_faces(img_path=image_bgr, detector_backend='opencv', enforce_detection=True)
+    # Process the image with Mediapipe
+    results = face_detection.process(image_rgb)
+    
+    if not results.detections:
+        st.error("❌ No face detected! Please look clearly at the camera.")
+    elif len(results.detections) > 1:
+        st.warning("⚠️ Multiple faces detected. Please make sure only one person is in frame.")
+    else:
+        # Success! Save the photo under the username
+        file_path = os.path.join(SAVE_DIR, f"{username}.jpg")
+        cv2.imwrite(file_path, image_bgr)
         
-        if len(face_objs) == 0:
-            st.error("❌ No face detected! Please look clearly at the camera.")
-        elif len(face_objs) > 1:
-            st.warning("⚠️ Multiple faces detected. Please make sure only one person is in frame.")
-        else:
-            # Success! Save the photo under the username
-            file_path = os.path.join(SAVE_DIR, f"{username}.jpg")
-            cv2.imwrite(file_path, image_bgr)
-            
-            st.success(f"🎉 Success! Face registered for user: **{username}**")
-            st.balloons()
-            
-    except Exception as e:
-        # DeepFace throws an error if 'enforce_detection' finds 0 faces
-        st.error("❌ Face detection failed. Please center your face in the camera and try again.")
+        st.success(f"🎉 Success! Face registered for user: **{username}**")
+        st.balloons()
 
 elif img_file_buffer is not None and username == "":
     st.error("⚠️ Please enter a username before taking the picture.")
